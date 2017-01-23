@@ -18,13 +18,13 @@ module EventCalendar
 
     # For the given month, find the start and end dates
     # Find all the events within this range, and create event strips for them
-    def event_strips_for_month(shown_date, first_day_of_week=0, find_options = {})
+    def event_strips_for_month(shown_date, first_day_of_week=0, includes_options={}, find_options = {}, references = {})
       if first_day_of_week.is_a?(Hash)
         find_options.merge!(first_day_of_week)
         first_day_of_week =  0
       end
       strip_start, strip_end = get_start_and_end_dates(shown_date, first_day_of_week)
-      events = events_for_date_range(strip_start, strip_end, find_options)
+      events = events_for_date_range(strip_start, strip_end, includes_options, find_options, references)
       event_strips = create_event_strips(strip_start, strip_end, events)
       event_strips
     end
@@ -48,12 +48,14 @@ module EventCalendar
     end
     
     # Get the events overlapping the given start and end dates
-    def events_for_date_range(start_d, end_d, find_options = {})
-      self.scoped(find_options).find(
-        :all,
-        :conditions => [ "(? <= #{self.quoted_table_name}.#{self.end_at_field}) AND (#{self.quoted_table_name}.#{self.start_at_field} <= ?)", start_d.to_time.utc, end_d.to_time.utc ],
-        :order => "#{self.quoted_table_name}.#{self.start_at_field} ASC"
-      )
+    def events_for_date_range(start_d, end_d, includes_options, find_options = {}, references = {})
+#      Event.includes(:event_type).where(find_options).where(
+#        "(? <= #{self.quoted_table_name}.#{self.end_at_field}) AND (#{self.quoted_table_name}.#{self.start_at_field} <= ?)", start_d.to_time.utc, end_d.to_time.utc).order(
+#        "#{self.quoted_table_name}.#{self.start_at_field} ASC"
+#      )
+      Event.includes(legacy_providers: :service_types).includes(:event_type).references(references).where(find_options).where(
+        "(? <= #{self.quoted_table_name}.#{self.end_at_field}) AND (#{self.quoted_table_name}.#{self.start_at_field} <= ?)", start_d.to_time.utc, end_d.to_time.utc).order("#{self.quoted_table_name}.#{self.start_at_field} ASC")
+
     end
     
     # Create the various strips that show events.
